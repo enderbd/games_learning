@@ -11,7 +11,6 @@ class Communicate(QtCore.QObject):
 class Tetris(QtWidgets.QMainWindow):
     def __init__(self):
         super(Tetris, self).__init__()
-        self.setGeometry(300, 300, 180, 480)
         self.setWindowTitle('Tetris')
 
         self.board = Board(self)
@@ -20,6 +19,8 @@ class Tetris(QtWidgets.QMainWindow):
         self.setup_ui()
 
         self.board.msg.info_msg[str].connect(self.info_board.print_msg)
+
+        self.setFixedSize(300, self.board.frameRect().height())
         self.center()
 
         self.board.start()
@@ -27,13 +28,13 @@ class Tetris(QtWidgets.QMainWindow):
     def setup_ui(self):
         main_widget = QtWidgets.QWidget()
         # main_widget.setContentsMargins(1, 1, 1, 1)
-        layout = QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QHBoxLayout()
         layout.setContentsMargins(1, 1, 1, 1)
 
         board_frame = QtWidgets.QFrame()
         board_frame.setContentsMargins(0, 0, 0, 0)
-        board_frame.setFixedSize(182, 382)
         board_frame.setFrameStyle(QtWidgets.QFrame.Panel)
+        board_frame.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
         board_layout = QtWidgets.QHBoxLayout()
         board_layout.setContentsMargins(0, 0, 0, 0)
@@ -55,12 +56,12 @@ class Tetris(QtWidgets.QMainWindow):
 class Board(QtWidgets.QFrame):
     width = 10
     height = 22
-    block_size = 20
-    speed = 300
+    block_size = 15
+    speed = 400
 
     def __init__(self, parent):
         super(Board, self).__init__(parent)
-
+        self.setFixedSize(Board.width * Board.block_size, Board.height * Board.block_size)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
         self.timer = QtCore.QBasicTimer()
@@ -80,24 +81,43 @@ class Board(QtWidgets.QFrame):
         self.timer.start(Board.speed, self)
 
     def new_piece(self):
-        pass
+        self.current_piece.set_random_piece()
+        self.msg.info_msg.emit('Piece is ' + str(self.current_piece.num))
 
     def paintEvent(self, event):
         painter = QtGui.QPainter(self)
-        rect = self.contentsRect()
 
-        self.draw_piece()
+        for b in self.current_piece.blocks:
+            block_x = self.x + (b % 2) * Board.block_size
+            block_y = self.y - (b / 2 - 3) * Board.block_size
+            self.draw_block(painter, block_x, block_y)
         # self.paint_event += 1
         # self.msg.info_msg.emit('Paint Event ' + str(rect.height()))
+        # print ('Board top {0}, square height {1}'.format(board_top, square_height))
         pass
 
     def timerEvent(self, event):
-        self.y += 1
+        self.y += Board.block_size
         self.update()
         # QtWidgets.QFrame.timerEvent(self, event)
 
-    def draw_piece(self):
-        self.msg.info_msg.emit('Drawing piece')
+    def draw_block(self, painter, x, y):
+        color_table = [0x000000, 0xCC6666, 0x66CC66, 0x6666CC,
+                      0xCCCC66, 0xCC66CC, 0x66CCCC, 0xDAAA00]
+
+        color = QtGui.QColor(color_table[self.current_piece.num])
+        # print ('piece num {0}, x: {1}, y: {2}'.format(self.current_piece.num, x, y))
+        painter.fillRect(x - 1, y - 1, Board.block_size, Board.block_size, color)
+        painter.fillRect(x - 1, y - 1, Board.block_size, Board.block_size, color)
+
+
+        painter.setPen(color.lighter())
+        painter.drawLine(x, y + Board.block_size - 1, x, y)
+        painter.drawLine(x, y, x + Board.block_size - 1, y)
+
+        painter.setPen(color.darker())
+        painter.drawLine(x + 1, y + Board.block_size - 1, x + Board.block_size - 1, y + Board.block_size - 1)
+        painter.drawLine(x + Board.block_size - 1, y + Board.block_size - 1, x + Board.block_size - 1, y + 1)
 
 
 class InfoFrame(QtWidgets.QWidget):
@@ -133,9 +153,9 @@ class InfoFrame(QtWidgets.QWidget):
 
 
 class Piece(object):
-    # pieces order: none, I, Z, S, T, L, J, O
-    pieces_loc = ((0, 0, 0, 0),
-              (1, 3, 5, 7),
+    # tuple containing the blocks. the pieces will fit inside a 2 X 4 grid, cell count starts top left with 0.
+    # pieces order: I, Z, S, T, L, J, O
+    pieces = ((1, 3, 5, 7),
               (2, 4, 5, 7),
               (3, 5, 4, 6),
               (3, 5, 4, 7),
@@ -144,28 +164,15 @@ class Piece(object):
               (2, 3, 4, 5))
 
     def __init__(self):
-        self.block_loc = []
-        self.tetromino = Tetrominoes.no_piece
-        self.set_piece(self.tetromino)
+        self.blocks = []
+        self.num = 0
 
-    def set_piece(self, tetromino):
-        self.block_loc = Piece.pieces_loc[tetromino]
-        self.tetromino = tetromino
+    def set_piece(self, num):
+        self.blocks = Piece.pieces[num]
+        self.num = num
 
     def set_random_piece(self):
-        self.set_piece(random.randint(1, 7))
-
-
-class Tetrominoes(object):
-    # no_piece added to make it more 'natural' the indexing of the pieces from 1 to 7
-    no_piece = 0
-    i_piece = 1
-    z_piece = 2
-    s_piece = 3
-    t_piece = 4
-    l_piece = 5
-    j_piece = 6
-    o_piece = 7
+        self.set_piece(random.randint(0, 6))
 
 
 def main():
