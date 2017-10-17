@@ -67,8 +67,10 @@ class Board(QtWidgets.QFrame):
         self.paint_event = 0
         self.timer_event = 0
 
+        self.x = 0
+        self.y = 0
         self.current_piece = Piece()
-        self.next_piece = Piece()
+        # self.next_piece = Piece()
 
         self.msg = Communicate()
 
@@ -84,15 +86,18 @@ class Board(QtWidgets.QFrame):
         painter = QtGui.QPainter(self)
         rect = self.contentsRect()
 
-        # self.draw_pice()
+        self.draw_piece()
         # self.paint_event += 1
-        self.msg.info_msg.emit('Paint Event ' + str(rect.height()))
+        # self.msg.info_msg.emit('Paint Event ' + str(rect.height()))
         pass
-    #
-    # def timerEvent(self, event):
-    #     # self.timer_event += 1
-    #     # self.msg.info_msg.emit('Timer Event ' + str(self.timer_event))
-    #     pass
+
+    def timerEvent(self, event):
+        self.y += 1
+        self.update()
+        # QtWidgets.QFrame.timerEvent(self, event)
+
+    def draw_piece(self):
+        self.msg.info_msg.emit('Drawing piece')
 
 
 class InfoFrame(QtWidgets.QWidget):
@@ -161,6 +166,7 @@ class Tetrominoes(object):
     l_piece = 5
     j_piece = 6
     o_piece = 7
+
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
